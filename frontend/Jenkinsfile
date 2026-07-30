@@ -1,5 +1,7 @@
 pipeline{
 
+    agent any
+
     environment {
         IMAGE_NAME = "mern_frontend"
         IMAGE_TAG = "${BUILD_NUMBER}"
