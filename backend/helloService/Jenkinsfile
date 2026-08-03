@@ -1,0 +1,44 @@
+pipeline{
+
+    agent any
+
+    environment {
+        IMAGE_NAME = "mern_backend_helloservice"
+        IMAGE_TAG = "${BUILD_NUMBER}"
+    }
+
+    stages {
+
+        stage ('Build Docker Image') {
+            steps {
+                dir('backend/helloService') {
+                    sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+                }
+            }
+        }
+
+        stage('Push Docker Image') {
+    steps {
+        withCredentials([[
+            $class: 'AmazonWebServicesCredentialsBinding',
+            credentialsId: 'aws-creds'
+        ]]) {
+
+            sh '''
+            aws sts get-caller-identity
+
+            aws ecr get-login-password --region ap-south-1 | \
+            docker login --username AWS --password-stdin 629161160811.dkr.ecr.ap-south-1.amazonaws.com
+
+            docker tag ${IMAGE_NAME}:${IMAGE_TAG} 629161160811.dkr.ecr.ap-south-1.amazonaws.com/${IMAGE_NAME}:${IMAGE_TAG}
+
+            docker push 629161160811.dkr.ecr.ap-south-1.amazonaws.com/${IMAGE_NAME}:${IMAGE_TAG}
+            '''
+        }
+    }
+}
+
+
+
+    }
+}
