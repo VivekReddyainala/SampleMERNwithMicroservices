@@ -1,21 +1,41 @@
 const express = require('express');
 const mongoose = require('mongoose');
-require('dotenv').config()
-var cors = require('cors')
-
+require('dotenv').config();
+const cors = require('cors');
 
 const app = express();
-const port = process.env.PORT;
-
-mongoose.connect(process.env.MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true });
+const port = process.env.PORT || 3002;
+const host = process.env.HOST || '0.0.0.0';
 
 app.use(express.json());
-app.use(cors())
+app.use(cors());
 
+app.get('/', (req, res) => {
+  res.status(200).json({ msg: 'Profile service is running' });
+});
 
-app.get('/health', (req,res)=>{
-    res.send({status: 'OK'})
-})
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'OK' });
+});
+
+const connectToMongo = async () => {
+  if (!process.env.MONGO_URL) {
+    console.warn('MONGO_URL is not set. Continuing without MongoDB connection.');
+    return;
+  }
+
+  try {
+    await mongoose.connect(process.env.MONGO_URL, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
+    });
+    console.log('MongoDB connected successfully.');
+  } catch (error) {
+    console.error('MongoDB connection failed:', error.message);
+  }
+};
+
+connectToMongo();
 
 const userSchema = mongoose.Schema({
     name: {
@@ -75,6 +95,10 @@ app.get('/fetchUser', async (req,res)=>{
       }
 })
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+const server = app.listen(port, host, () => {
+  console.log(`Server is running on http://${host}:${port}`);
+});
+
+process.on('SIGTERM', () => {
+  server.close(() => process.exit(0));
 });

@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
+const HELLO_API_URL = process.env.REACT_APP_HELLO_API_URL || "http://localhost:3001";
+const PROFILE_API_URL = process.env.REACT_APP_PROFILE_API_URL || "http://localhost:3002";
+
 function Home() {
   const [message, setMessage] = useState("");
   const [profile, setProfile] = useState([]);
 
   useEffect(() => {
     axios
-      .get("http://localhost:3001/")
+      .get(`${HELLO_API_URL}/`)
       .then((response) => {
         setMessage(response.data.msg);
       })
@@ -16,13 +19,12 @@ function Home() {
 
   useEffect(() => {
     axios
-      .get("http://localhost:3002/fetchUser")
+      .get(`${PROFILE_API_URL}/fetchUser`)
       .then((response) => {
         setProfile(response.data);
-        
       })
       .catch((error) => console.error("Error fetching data:", error));
-  },[]);
+  }, []);
 
   
 
