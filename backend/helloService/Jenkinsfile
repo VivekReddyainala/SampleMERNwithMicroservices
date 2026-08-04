@@ -1,44 +1,76 @@
-pipeline{
-
+pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "mern_backend_helloservice"
-        IMAGE_TAG = "${BUILD_NUMBER}"
+        IMAGE_NAME = 'mern_backend_helloservice'
+        IMAGE_TAG = 'latest'
+        ECR_REPO = '629161160811.dkr.ecr.ap-south-1.amazonaws.com'
+        NAMESPACE = 'mern-app'
+        RELEASE_NAME = 'mern_backend_helloservice_release'
+        CHART_PATH = 'backend/helloService/mern-backend-helloprofile-helm'
+        CLUSTER_NAME = 'mern-app-eks-cluster'
+        AWS_REGION = 'ap-south-1'
     }
 
     stages {
-
-        stage ('Build Docker Image') {
+        stage('Build Docker Image') {
             steps {
                 dir('backend/helloService') {
-                    sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
         }
 
-        stage('Push Docker Image') {
-    steps {
-        withCredentials([[
-            $class: 'AmazonWebServicesCredentialsBinding',
-            credentialsId: 'aws-creds'
-        ]]) {
-
-            sh '''
-            aws sts get-caller-identity
-
-            aws ecr get-login-password --region ap-south-1 | \
-            docker login --username AWS --password-stdin 629161160811.dkr.ecr.ap-south-1.amazonaws.com
-
-            docker tag ${IMAGE_NAME}:${IMAGE_TAG} 629161160811.dkr.ecr.ap-south-1.amazonaws.com/${IMAGE_NAME}:${IMAGE_TAG}
-
-            docker push 629161160811.dkr.ecr.ap-south-1.amazonaws.com/${IMAGE_NAME}:${IMAGE_TAG}
-            '''
+        stage('Push to ECR') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds'
+                ]]) {
+                    sh '''
+                    aws sts get-caller-identity
+                    aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin ${ECR_REPO}
+                    docker tag ${IMAGE_NAME}:${IMAGE_TAG} ${ECR_REPO}/${IMAGE_NAME}:${IMAGE_TAG}
+                    docker push ${ECR_REPO}/${IMAGE_NAME}:${IMAGE_TAG}
+                    '''
+                }
+            }
         }
-    }
-}
 
+        stage('Configure EKS Access') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds'
+                ]]) {
+                    sh '''
+                    aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_REGION}
+                    kubectl get nodes
+                    '''
+                }
+            }
+        }
 
-
+        stage('Deploy with Helm') {
+            steps {
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds'
+                ]]) {
+                    sh '''
+                    aws eks update-kubeconfig --name ${CLUSTER_NAME} --region ${AWS_REGION}
+                    kubectl get namespace ${NAMESPACE} >/dev/null 2>&1 || kubectl create namespace ${NAMESPACE}
+                    helm upgrade --install ${RELEASE_NAME} ${CHART_PATH} -n ${NAMESPACE} \
+                      --set image.repository=${ECR_REPO}/${IMAGE_NAME} \
+                      --set image.tag=${IMAGE_TAG} \
+                      --set image.pullPolicy=Always
+                    echo "--- Kubernetes resources ---"
+                    kubectl get all -n ${NAMESPACE}
+                    echo "--- Service URL hint ---"
+                    kubectl get svc -n ${NAMESPACE}
+                    '''
+                }
+            }
+        }
     }
 }
