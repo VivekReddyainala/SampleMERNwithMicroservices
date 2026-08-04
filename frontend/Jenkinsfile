@@ -54,12 +54,8 @@ pipeline {
         stage('Deploy with Helm') {
             steps {
                 sh '''
-                kubectl delete namespace ${NAMESPACE} --ignore-not-found=true
-                kubectl create namespace ${NAMESPACE} --dry-run=client -o yaml | kubectl apply -f -
-                helm upgrade --install ${RELEASE_NAME} ${CHART_PATH} -n ${NAMESPACE} \
-                  --set image.repository=${ECR_REPO}/${IMAGE_NAME} \
-                  --set image.tag=${IMAGE_TAG} \
-                  --set image.pullPolicy=Always
+                helm install ${RELEASE_NAME} ${CHART_PATH} -n ${NAMESPACE} 
+                
                 '''
             }
         }
