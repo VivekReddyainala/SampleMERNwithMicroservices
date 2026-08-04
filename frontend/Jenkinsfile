@@ -64,6 +64,10 @@ pipeline {
                       --set image.repository=${ECR_REPO}/${IMAGE_NAME} \
                       --set image.tag=${IMAGE_TAG} \
                       --set image.pullPolicy=Always
+                    echo "--- Kubernetes resources ---"
+                    kubectl get all -n ${NAMESPACE}
+                    echo "--- Service URL hint ---"
+                    kubectl get svc -n ${NAMESPACE}
                     '''
                 }
             }
