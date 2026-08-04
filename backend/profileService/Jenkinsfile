@@ -6,7 +6,7 @@ pipeline {
         IMAGE_TAG = 'latest'
         ECR_REPO = '629161160811.dkr.ecr.ap-south-1.amazonaws.com'
         NAMESPACE = 'mern-app'
-        RELEASE_NAME = 'mern_backend_profileservice_release'
+        RELEASE_NAME = 'mern-backend-profileservice-release'
         CHART_PATH = 'backend/profileService/mern-backend-profile-service-helm'
         CLUSTER_NAME = 'mern-app-eks-cluster'
         AWS_REGION = 'ap-south-1'
